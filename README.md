@@ -1115,9 +1115,9 @@ Console.WriteLine($"Library Version: {informationalVersion}");
 
 ## Dependencies
 
-- **.NET 8.0** or later
-- **Microsoft.Extensions.DependencyInjection** (8.0.1)
-- **Microsoft.Extensions.Logging.Abstractions** (8.0.1) - For rich error handling and logging
+- **.NET 9.0** or later
+- **Microsoft.Extensions.DependencyInjection** (9.0.8)
+- **Microsoft.Extensions.Logging.Abstractions** (9.0.8) - For rich error handling and logging
 - **Scrutor** (5.0.1) - For automatic service registration
 - **Nerdbank.GitVersioning** (3.7.115) - For semantic versioning
 

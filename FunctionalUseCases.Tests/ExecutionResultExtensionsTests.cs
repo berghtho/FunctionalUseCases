@@ -65,8 +65,7 @@ public class ExecutionResultExtensionsTests
         loggedResult.ShouldBeSameAs(result);
         A.CallTo(mockLogger)
             .Where(call => call.Method.Name == "Log" &&
-                          call.Arguments.Count > 0 &&
-                          call.Arguments[0].Equals(LogLevel.Error))
+                          call.GetArgument<LogLevel>(0) == LogLevel.Error)
             .MustHaveHappened();
         result.Error!.Logged.ShouldBeTrue();
     }
@@ -107,14 +106,12 @@ public class ExecutionResultExtensionsTests
         // Assert
         A.CallTo(mockLogger)
             .Where(call => call.Method.Name == "Log" &&
-                          call.Arguments.Count > 0 &&
-                          call.Arguments[0].Equals(LogLevel.Warning))
+                          call.GetArgument<LogLevel>(0) == LogLevel.Warning)
             .MustHaveHappened();
 
         A.CallTo(mockLogger)
             .Where(call => call.Method.Name == "Log" &&
-                          call.Arguments.Count > 0 &&
-                          call.Arguments[0].Equals(LogLevel.Information))
+                          call.GetArgument<LogLevel>(0) == LogLevel.Information)
             .MustHaveHappened();
     }
 
