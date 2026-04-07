@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="800" height="200">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a"/>
+      <stop offset="100%" style="stop-color:#1e293b"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#6366f1"/>
+      <stop offset="100%" style="stop-color:#818cf8"/>
+    </linearGradient>
+    <linearGradient id="node1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1"/>
+      <stop offset="100%" style="stop-color:#4f46e5"/>
+    </linearGradient>
+    <linearGradient id="node2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#818cf8"/>
+      <stop offset="100%" style="stop-color:#6366f1"/>
+    </linearGradient>
+    <linearGradient id="node3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#a5b4fc"/>
+      <stop offset="100%" style="stop-color:#818cf8"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="200" rx="12" fill="url(#bg)"/>
+
+  <!-- Pipeline nodes -->
+  <!-- Node 1 -->
+  <circle cx="90" cy="100" r="30" fill="url(#node1)" filter="url(#glow)" opacity="0.9"/>
+  <text x="90" y="105" text-anchor="middle" fill="white" font-family="monospace" font-size="14" font-weight="bold">ƒ</text>
+
+  <!-- Arrow 1 -->
+  <line x1="122" y1="100" x2="153" y2="100" stroke="url(#accent)" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="153,95 163,100 153,105" fill="#6366f1"/>
+
+  <!-- Node 2 -->
+  <circle cx="193" cy="100" r="30" fill="url(#node2)" filter="url(#glow)" opacity="0.9"/>
+  <text x="193" y="105" text-anchor="middle" fill="white" font-family="monospace" font-size="11" font-weight="bold">UC</text>
+
+  <!-- Arrow 2 -->
+  <line x1="225" y1="100" x2="256" y2="100" stroke="url(#accent)" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="256,95 266,100 256,105" fill="#818cf8"/>
+
+  <!-- Node 3 -->
+  <circle cx="296" cy="100" r="30" fill="url(#node3)" filter="url(#glow)" opacity="0.9"/>
+  <!-- Checkmark -->
+  <polyline points="283,100 293,110 311,88" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+  <!-- Divider -->
+  <line x1="355" y1="50" x2="355" y2="150" stroke="#334155" stroke-width="1.5"/>
+
+  <!-- Library name -->
+  <text x="395" y="88" fill="white" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="30" font-weight="700" letter-spacing="-0.5">Functional</text>
+  <text x="395" y="128" fill="url(#accent)" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="30" font-weight="700" letter-spacing="-0.5">UseCases</text>
+
+  <!-- Tagline -->
+  <text x="395" y="158" fill="#94a3b8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="13" font-weight="400">Functional use case processing for .NET</text>
+</svg>

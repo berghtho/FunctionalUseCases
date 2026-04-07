@@ -1,4 +1,14 @@
-# FunctionalUseCases
+<div align="center">
+  <img src="logo.svg" alt="FunctionalUseCases" width="600px" />
+  <br/>
+  <br/>
+
+  [![Build](https://github.com/berghtho/FunctionalUseCases/actions/workflows/pr.yml/badge.svg)](https://github.com/berghtho/FunctionalUseCases/actions/workflows/pr.yml)
+  [![NuGet](https://img.shields.io/nuget/v/FunctionalUseCases.svg)](https://www.nuget.org/packages/FunctionalUseCases/)
+  [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+</div>
+
+---
 
 A complete .NET solution that implements functional processing of use cases using the Mediator pattern with advanced ExecutionResult error handling. This library provides a clean way to organize business logic into discrete, testable use cases with sophisticated dependency injection support and functional error handling patterns.
 
