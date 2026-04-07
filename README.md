@@ -270,10 +270,10 @@ services.AddScoped(typeof(IExecutionBehavior<,>), typeof(TimingBehavior<,>));
 
 ### Execution Order
 
-Global behaviors are executed in the order they are registered. Each behavior can execute logic before and after the next step in the pipeline:
+Global behaviors are executed in the order they are registered. Each behavior's `ExecuteAsync` is invoked once and receives the `next` delegate in the pipeline. Any code that runs before calling `next()` executes ahead of downstream steps, and any code that runs after awaiting `next()` executes after those steps complete:
 
 ```
-Behavior 1 (before) → Behavior 2 (before) → Use Case Handler → Behavior 2 (after) → Behavior 1 (after)
+Behavior 1 enters → Behavior 2 enters → Use Case Handler → Behavior 2 continues → Behavior 1 continues
 ```
 
 ### Common Global Execution Behavior Patterns
@@ -827,33 +827,16 @@ var result = await dispatcher
 
 ## Registration Options
 
-The library provides several extension methods for registering use cases (*located in: `FunctionalUseCases/Extensions/UseCaseRegistrationExtensions.cs`*):
-
-**Note:** There are two types of execution behaviors that require different registration approaches:
-
-1. **Global behaviors** are NOT automatically registered. Register them manually using standard DI registration - they apply to ALL executions:
+The library provides several extension methods for registering use cases (*located in: `FunctionalUseCases/Extensions/UseCaseRegistrationExtensions.cs`*). Registration recap:
 
 ```csharp
-// Register from specific assemblies
-services.AddUseCases(new[] { typeof(MyUseCaseParameter).Assembly });
-
-// Register from calling assembly
-services.AddUseCasesFromAssembly();
-
-// Register from assembly containing a specific type
+// Register use cases
 services.AddUseCasesFromAssemblyContaining<MyUseCaseParameter>();
 
-// Specify service lifetime (default is Transient)
-services.AddUseCasesFromAssembly(ServiceLifetime.Scoped);
-
-// Register global execution behaviors manually - applied to ALL use case executions
+// Global execution behaviors (manual, applied to all executions)
 services.AddScoped(typeof(IExecutionBehavior<,>), typeof(LoggingBehavior<,>));
-```
 
-2. **Per-call behaviors** used with `WithBehavior()` are registered as open generics:
-
-```csharp
-// Register open generic behaviors for per-call usage
+// Per-call behaviors for WithBehavior() (open generics resolved at execution time)
 services.AddScoped(typeof(TransactionBehavior<,>));
 services.AddScoped(typeof(ValidationBehavior<,>));
 services.AddScoped<CachingBehavior<GetUserUseCase, User>>();
@@ -1050,18 +1033,14 @@ info: Starting execution of use case: SampleUseCase -> String
 info: Successfully executed use case: SampleUseCase -> String in 95ms
 Chain Success: Hello, SecondStep-9! Welcome to FunctionalUseCases.
 
-Example 4: WithBehavior - Per-call transaction behavior
-Transaction behavior not available (expected): Unable to resolve service for type 'TransactionBehavior`2[SampleUseCase,String]'
-
-Example 5: Use Case Chain with WithBehavior
-Chain with transaction behavior not available (expected): Unable to resolve service for type 'TransactionBehavior`2[SampleUseCase,String]'
-
 Example 6: Interactive
 Enter your name: Alice
 info: Starting execution of use case: SampleUseCase -> String
 info: Successfully executed use case: SampleUseCase -> String in 92ms
 Interactive Success: Hello, Alice! Welcome to FunctionalUseCases.
 ```
+
+Examples 4 and 5 demonstrate the `WithBehavior()` API. Register a per-call behavior such as `TransactionBehavior<,>` (as shown in the registration section) before running them to see the behavior wrap the execution or the entire chain. If the behavior is not registered, the DI container will throw a missing-service error, highlighting the need to register open generic behaviors explicitly.
 
 ## Best Practices
 
