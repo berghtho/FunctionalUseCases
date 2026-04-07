@@ -16,8 +16,8 @@ public class UseCaseChain<TResult>
     private readonly IServiceProvider _serviceProvider;
     private readonly ITransactionManager? _transactionManager;
     private readonly ILogger? _logger;
-    private readonly List<object> _perCallBehaviors;
-    internal readonly List<Func<object?, CancellationToken, Task<(bool Success, object? Result, ExecutionError? Error)>>> _steps;
+    internal readonly List<object> _perCallBehaviors;
+    internal readonly List<Func<IExecutionScope, object?, CancellationToken, Task<(bool Success, object? Result, ExecutionError? Error)>>> _steps;
     private Func<ExecutionError, CancellationToken, Task<ExecutionResult<TResult>>>? _errorHandler;
     private readonly string _chainId;
 
@@ -28,7 +28,7 @@ public class UseCaseChain<TResult>
         _transactionManager = transactionManager;
         _logger = logger;
         _perCallBehaviors = new List<object>();
-        _steps = new List<Func<object?, CancellationToken, Task<(bool Success, object? Result, ExecutionError? Error)>>>();
+        _steps = new List<Func<IExecutionScope, object?, CancellationToken, Task<(bool Success, object? Result, ExecutionError? Error)>>>();
         _chainId = Guid.NewGuid().ToString();
     }
 
@@ -39,7 +39,7 @@ public class UseCaseChain<TResult>
         _transactionManager = transactionManager;
         _logger = logger;
         _perCallBehaviors = new List<object>(perCallBehaviors);
-        _steps = new List<Func<object?, CancellationToken, Task<(bool Success, object? Result, ExecutionError? Error)>>>();
+        _steps = new List<Func<IExecutionScope, object?, CancellationToken, Task<(bool Success, object? Result, ExecutionError? Error)>>>();
         _chainId = chainId;
     }
 
@@ -108,28 +108,19 @@ public class UseCaseChain<TResult>
         newChain._steps.AddRange(_steps);
 
         // Add the new step
-        newChain._steps.Add(async (previousResult, cancellationToken) =>
+        newChain._steps.Add(async (scope, previousResult, cancellationToken) =>
         {
-            var isFirstStep = newChain._steps.Count == 1;
-            var isLastStep = true; // This will be true until more steps are added
-            var scope = ExecutionScope.Chain(_chainId, isFirstStep, isLastStep);
-
             // Create execution context with per-call behaviors
             var context = new ExecutionContext<TNextResult>(_dispatcher, _serviceProvider);
-            foreach (var behavior in _perCallBehaviors)
+            foreach (var behavior in newChain._perCallBehaviors)
             {
                 context = (ExecutionContext<TNextResult>)context.WithBehavior(behavior);
             }
 
             var result = await context.ExecuteInternalAsync(useCaseParameter, scope, cancellationToken);
-            if (result.ExecutionSucceeded)
-            {
-                return (true, result.CheckedValue, null);
-            }
-            else
-            {
-                return (false, null, result.CheckedError);
-            }
+            return result.ExecutionSucceeded
+                ? (true, (object?)result.CheckedValue, (ExecutionError?)null)
+                : (false, (object?)null, result.CheckedError);
         });
 
         return newChain;
@@ -155,36 +146,27 @@ public class UseCaseChain<TResult>
         newChain._steps.AddRange(_steps);
 
         // Add the new step
-        newChain._steps.Add(async (previousResult, cancellationToken) =>
+        newChain._steps.Add(async (scope, previousResult, cancellationToken) =>
         {
             if (previousResult is not TResult typedPreviousResult)
             {
                 return (false, null, new ExecutionError("Previous result type mismatch in chain"));
             }
 
-            var isFirstStep = newChain._steps.Count == 1;
-            var isLastStep = true; // This will be true until more steps are added
-            var scope = ExecutionScope.Chain(_chainId, isFirstStep, isLastStep);
-
             var useCaseParameter = useCaseParameterFactory(typedPreviousResult);
 
             // Create execution context with per-call behaviors
             var context = new ExecutionContext<TNextResult>(_dispatcher, _serviceProvider);
-            foreach (var behavior in _perCallBehaviors)
+            foreach (var behavior in newChain._perCallBehaviors)
             {
                 context = (ExecutionContext<TNextResult>)context.WithBehavior(behavior);
             }
 
             var result = await context.ExecuteInternalAsync(useCaseParameter, scope, cancellationToken);
 
-            if (result.ExecutionSucceeded)
-            {
-                return (true, result.CheckedValue, null);
-            }
-            else
-            {
-                return (false, null, result.CheckedError);
-            }
+            return result.ExecutionSucceeded
+                ? (true, (object?)result.CheckedValue, (ExecutionError?)null)
+                : (false, (object?)null, result.CheckedError);
         });
 
         return newChain;
@@ -234,9 +216,6 @@ public class UseCaseChain<TResult>
             return Execution.Failure<TResult>("Chain is empty. Add at least one use case using Then().");
         }
 
-        // Update scope information for all steps before execution
-        UpdateStepScopes();
-
         ITransaction? transaction = null;
         object? currentResult = null;
 
@@ -255,7 +234,8 @@ public class UseCaseChain<TResult>
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var step = _steps[i];
-                var (success, result, error) = await step(currentResult, cancellationToken);
+                var scope = ExecutionScope.Chain(_chainId, i == 0, i == _steps.Count - 1);
+                var (success, result, error) = await step(scope, currentResult, cancellationToken);
 
                 if (!success)
                 {
@@ -346,13 +326,6 @@ public class UseCaseChain<TResult>
         }
     }
 
-    private void UpdateStepScopes()
-    {
-        // This is a complex operation because we need to update the scope information
-        // for steps that have already been created. For now, we'll rely on the
-        // step creation logic to set the correct scope at creation time.
-        // A more sophisticated implementation might use a callback pattern.
-    }
 }
 
 /// <summary>
@@ -364,8 +337,8 @@ public class UseCaseChain
     private readonly IServiceProvider _serviceProvider;
     private readonly ITransactionManager? _transactionManager;
     private readonly ILogger? _logger;
-    private readonly List<object> _perCallBehaviors;
-    private readonly List<Func<object?, CancellationToken, Task<(bool Success, object? Result, ExecutionError? Error)>>> _steps;
+    internal readonly List<object> _perCallBehaviors;
+    private readonly List<Func<IExecutionScope, object?, CancellationToken, Task<(bool Success, object? Result, ExecutionError? Error)>>> _steps;
     private Func<ExecutionError, CancellationToken, Task<ExecutionResult>>? _errorHandler;
     private readonly string _chainId;
 
@@ -376,7 +349,7 @@ public class UseCaseChain
         _transactionManager = transactionManager;
         _logger = logger;
         _perCallBehaviors = new List<object>();
-        _steps = new List<Func<object?, CancellationToken, Task<(bool Success, object? Result, ExecutionError? Error)>>>();
+        _steps = new List<Func<IExecutionScope, object?, CancellationToken, Task<(bool Success, object? Result, ExecutionError? Error)>>>();
         _chainId = Guid.NewGuid().ToString();
     }
 
@@ -387,7 +360,7 @@ public class UseCaseChain
         _transactionManager = transactionManager;
         _logger = logger;
         _perCallBehaviors = new List<object>(perCallBehaviors);
-        _steps = new List<Func<object?, CancellationToken, Task<(bool Success, object? Result, ExecutionError? Error)>>>();
+        _steps = new List<Func<IExecutionScope, object?, CancellationToken, Task<(bool Success, object? Result, ExecutionError? Error)>>>();
         _chainId = chainId;
     }
 
@@ -456,28 +429,19 @@ public class UseCaseChain
         newChain._steps.AddRange(_steps);
 
         // Add the new step
-        newChain._steps.Add(async (previousResult, cancellationToken) =>
+        newChain._steps.Add(async (scope, previousResult, cancellationToken) =>
         {
-            var isFirstStep = newChain._steps.Count == 1;
-            var isLastStep = true; // This will be true until more steps are added
-            var scope = ExecutionScope.Chain(_chainId, isFirstStep, isLastStep);
-
             // Create execution context with per-call behaviors
             var context = new ExecutionContext<TResult>(_dispatcher, _serviceProvider);
-            foreach (var behavior in _perCallBehaviors)
+            foreach (var behavior in newChain._perCallBehaviors)
             {
                 context = (ExecutionContext<TResult>)context.WithBehavior(behavior);
             }
 
             var result = await context.ExecuteInternalAsync(useCaseParameter, scope, cancellationToken);
-            if (result.ExecutionSucceeded)
-            {
-                return (true, result.CheckedValue, null);
-            }
-            else
-            {
-                return (false, null, result.CheckedError);
-            }
+            return result.ExecutionSucceeded
+                ? (true, (object?)result.CheckedValue, (ExecutionError?)null)
+                : (false, (object?)null, result.CheckedError);
         });
 
         return newChain;
@@ -530,11 +494,12 @@ public class UseCaseChain
         try
         {
             // Execute each step in the chain, passing results between steps
-            foreach (var step in _steps)
+            for (var i = 0; i < _steps.Count; i++)
             {
+                var scope = ExecutionScope.Chain(_chainId, i == 0, i == _steps.Count - 1);
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var (success, result, error) = await step(currentResult, cancellationToken);
+                var (success, result, error) = await _steps[i](scope, currentResult, cancellationToken);
 
                 if (!success)
                 {

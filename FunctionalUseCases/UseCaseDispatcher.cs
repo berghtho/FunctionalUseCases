@@ -5,23 +5,12 @@ namespace FunctionalUseCases;
 /// <summary>
 /// Mediator-style UseCase dispatcher that resolves handlers via dependency injection.
 /// </summary>
-public class UseCaseDispatcher : IUseCaseDispatcher
+public class UseCaseDispatcher(IServiceProvider serviceProvider) : IUseCaseDispatcher
 {
-    private readonly IServiceProvider _serviceProvider;
-
     /// <summary>
     /// Gets the service provider used for dependency injection.
     /// </summary>
-    public IServiceProvider ServiceProvider => _serviceProvider;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="UseCaseDispatcher"/> class.
-    /// </summary>
-    /// <param name="serviceProvider">The service provider for resolving handlers.</param>
-    public UseCaseDispatcher(IServiceProvider serviceProvider)
-    {
-        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-    }
+    public IServiceProvider ServiceProvider { get; } = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
 
     /// <summary>
     /// Executes a use case by resolving the appropriate handler and running it through the pipeline behaviors.
@@ -43,7 +32,7 @@ public class UseCaseDispatcher : IUseCaseDispatcher
             var useCaseParameterType = useCaseParameter.GetType();
             var useCaseType = typeof(IUseCase<,>).MakeGenericType(useCaseParameterType, typeof(TResult));
 
-            var useCase = _serviceProvider.GetService(useCaseType);
+            var useCase = ServiceProvider.GetService(useCaseType);
             if (useCase == null)
             {
                 return Execution.Failure<TResult>($"No use case registered for parameter type '{useCaseParameterType.Name}'");
@@ -51,7 +40,7 @@ public class UseCaseDispatcher : IUseCaseDispatcher
 
             // Get all execution behaviors for this use case parameter and result type
             var behaviorType = typeof(IExecutionBehavior<,>).MakeGenericType(useCaseParameterType, typeof(TResult));
-            var behaviors = _serviceProvider.GetServices(behaviorType).ToArray();
+            var behaviors = ServiceProvider.GetServices(behaviorType).ToArray();
 
             // Build the pipeline by chaining behaviors
             PipelineBehaviorDelegate<TResult> pipeline = async () =>

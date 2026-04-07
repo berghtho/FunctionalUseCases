@@ -4,19 +4,17 @@ A complete .NET solution that implements functional processing of use cases usin
 
 ## Features
 
-- 🎯 **Mediator Pattern**: Clean separation between use case parameters and their implementations
-- 🚀 **Dependency Injection**: Full support for Microsoft.Extensions.DependencyInjection
-- 🔍 **Automatic Registration**: Use Scrutor to automatically discover and register use cases
-- ✅ **Advanced ExecutionResult Pattern**: Sophisticated functional approach with both generic and non-generic variants
-- 🛡️ **Rich Error Handling**: ExecutionError with multiple messages, error codes, and log levels
-- 🔄 **Implicit Conversions**: Seamless conversion between values and ExecutionResult
-- ➕ **Result Combination**: Combine multiple ExecutionResult objects using the `+` operator or `Combine()` method
-- 🧪 **Testable**: Easy to unit test individual use cases with comprehensive error scenarios
-- 📦 **Enterprise-Ready**: Robust implementation with logging integration and cancellation support
-- 🔗 **Global Execution Behaviors**: Cross-cutting concerns like logging, validation, caching applied to all use case executions
-- ⚡ **Per-Call Execution Behaviors**: Fluent API for applying behaviors to specific use case executions or chains using `WithBehavior(typeof(MyBehavior<,>))`
-- 🔄 **Use Case Chaining**: Fluent chain execution with result passing and chain-aware behavior support
-- 🏷️ **Chain-Aware Transaction Management**: Intelligent transaction handling that adapts based on execution context (single use case vs. chain)
+- **Mediator Pattern**: Clean separation between use case parameters and their implementations
+- **Dependency Injection**: Full support for Microsoft.Extensions.DependencyInjection
+- **Automatic Registration**: Use Scrutor to automatically discover and register use cases
+- **Advanced ExecutionResult Pattern**: Functional approach with generic and non-generic variants
+- **Rich Error Handling**: ExecutionError with multiple messages, error codes, and log levels
+- **Implicit Conversions**: Seamless conversion between values and ExecutionResult
+- **Result Combination**: Combine multiple ExecutionResult objects using the `+` operator or `Combine()` method
+- **Testable**: Easy to unit test individual use cases with comprehensive error scenarios
+- **Production Ready**: Logging integration, cancellation support, and behavior pipeline
+- **Execution Behaviors**: Apply cross-cutting concerns globally or per-call (validation, logging, caching, transactions)
+- **Use Case Chaining**: Fluent chain execution with result passing and chain-aware behavior support
 
 ## Installation
 
@@ -1038,31 +1036,31 @@ dotnet test
 Example 1: Successful execution
 info: Starting execution of use case: SampleUseCase -> String
 info: Successfully executed use case: SampleUseCase -> String in 103ms
-✅ Success: Hello, World! Welcome to FunctionalUseCases.
+Success: Hello, World! Welcome to FunctionalUseCases.
 
 Example 2: Failed execution (empty name)
 info: Starting execution of use case: SampleUseCase -> String
 warn: Use case execution failed: SampleUseCase -> String in 101ms. Error: Name cannot be empty or whitespace
-❌ Error: Name cannot be empty or whitespace
+Error: Name cannot be empty or whitespace
 
 Example 3: Use Case Chain
 info: Starting execution of use case: SampleUseCase -> String
 info: Successfully executed use case: SampleUseCase -> String in 98ms
 info: Starting execution of use case: SampleUseCase -> String
 info: Successfully executed use case: SampleUseCase -> String in 95ms
-✅ Chain Success: Hello, SecondStep-9! Welcome to FunctionalUseCases.
+Chain Success: Hello, SecondStep-9! Welcome to FunctionalUseCases.
 
 Example 4: WithBehavior - Per-call transaction behavior
-⚠️ Transaction behavior not available (expected): Unable to resolve service for type 'TransactionBehavior`2[SampleUseCase,String]'
+Transaction behavior not available (expected): Unable to resolve service for type 'TransactionBehavior`2[SampleUseCase,String]'
 
 Example 5: Use Case Chain with WithBehavior
-⚠️ Chain with transaction behavior not available (expected): Unable to resolve service for type 'TransactionBehavior`2[SampleUseCase,String]'
+Chain with transaction behavior not available (expected): Unable to resolve service for type 'TransactionBehavior`2[SampleUseCase,String]'
 
 Example 6: Interactive
 Enter your name: Alice
 info: Starting execution of use case: SampleUseCase -> String
 info: Successfully executed use case: SampleUseCase -> String in 92ms
-✅ Interactive Success: Hello, Alice! Welcome to FunctionalUseCases.
+Interactive Success: Hello, Alice! Welcome to FunctionalUseCases.
 ```
 
 ## Best Practices
@@ -1096,10 +1094,10 @@ This naming convention follows the principle that parameters define what data is
 
 This library uses **semantic versioning** powered by [Nerdbank.GitVersioning](https://github.com/dotnet/Nerdbank.GitVersioning):
 
-- 🏷️ **Automatic Version Generation**: Versions are automatically generated based on Git history
-- 📦 **NuGet Package Versioning**: Packages are versioned consistently across builds
-- 🔍 **Runtime Version Access**: Version information is available at runtime via assembly attributes
-- 🚀 **CI/CD Ready**: Integrates seamlessly with build pipelines
+- Automatic version generation from Git history
+- NuGet packages aligned with repository versions
+- Runtime version information available via assembly attributes
+- Ready for CI/CD pipelines
 
 ### Version Information Access
 
@@ -1115,9 +1113,9 @@ Console.WriteLine($"Library Version: {informationalVersion}");
 
 ## Dependencies
 
-- **.NET 8.0** or later
-- **Microsoft.Extensions.DependencyInjection** (8.0.1)
-- **Microsoft.Extensions.Logging.Abstractions** (8.0.1) - For rich error handling and logging
+- **.NET 10.0** or later
+- **Microsoft.Extensions.DependencyInjection** (10.0.0)
+- **Microsoft.Extensions.Logging.Abstractions** (10.0.0) - For rich error handling and logging
 - **Scrutor** (5.0.1) - For automatic service registration
 - **Nerdbank.GitVersioning** (3.7.115) - For semantic versioning
 
