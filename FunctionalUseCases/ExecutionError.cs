@@ -29,9 +29,14 @@ public record ExecutionError<T>
 
     public IList<T> Messages { get; set; } = new List<T>();
 
-    public int? ErrorCode { get; set; }
+    public string? ErrorCode { get; set; }
 
     public LogLevel LogLevel { get; set; } = LogLevel.Error;
+
+    public Exception? Exception { get; set; }
+
+    public IDictionary<string, object?> Properties { get; set; } =
+        new Dictionary<string, object?>(StringComparer.Ordinal);
 
     public bool Logged { get; internal set; } = false;
 }

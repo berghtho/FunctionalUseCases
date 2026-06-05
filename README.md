@@ -145,7 +145,11 @@ public record ExecutionResult<T>(ExecutionError? Error = null) : ExecutionResult
 {
     public bool ExecutionSucceeded { get; }
     public bool ExecutionFailed { get; }
-    public T CheckedValue { get; } // Throws if failed
+    public T CheckedValue { get; } // Throws ExecutionException if failed
+    public T GetValueOrThrow(string? exceptionMessage = null);
+    public TResult Match<TResult>(Func<T, TResult> onSuccess, Func<ExecutionError, TResult> onFailure);
+    public ExecutionResult<TResult> Map<TResult>(Func<T, TResult> map);
+    public ExecutionResult<TResult> Bind<TResult>(Func<T, ExecutionResult<TResult>> bind);
 }
 
 // Non-generic variant
@@ -170,14 +174,21 @@ ExecutionResult<string> result = "Hello World"; // Automatically creates success
 Rich error information with support for multiple messages, error codes, and logging levels:
 
 ```csharp
-public record ExecutionError(
-    string Message,
-    string? ErrorCode = null,
-    LogLevel LogLevel = LogLevel.Error,
-    Exception? Exception = null,
-    IDictionary<string, object>? Properties = null
-);
+public record ExecutionError : ExecutionError<string>;
+
+public record ExecutionError<T>
+{
+    public string Message { get; }
+    public IList<T> Messages { get; set; }
+    public string? ErrorCode { get; set; }
+    public LogLevel LogLevel { get; set; }
+    public Exception? Exception { get; set; }
+    public IDictionary<string, object?> Properties { get; set; }
+}
 ```
+
+Exceptions passed to `Execution.Failure(...)` remain available through
+`ExecutionError.Exception`, including original type and stack trace.
 
 ### IUseCaseDispatcher
 
@@ -887,7 +898,7 @@ var result = await dispatcher.ExecuteAsync(useCaseParameter);
 // Pattern 1: Check success and access value
 if (result.ExecutionSucceeded)
 {
-    var value = result.CheckedValue; // Safe access to value
+    var value = result.GetValueOrThrow();
     Console.WriteLine(value);
 }
 
@@ -909,6 +920,14 @@ if (result.ExecutionFailed)
 
 // Pattern 3: Throw on failure
 result.ThrowIfFailed("Custom error message");
+
+// Pattern 4: Functional composition
+var displayName = result
+    .Map(value => value.ToString())
+    .Bind(value => string.IsNullOrWhiteSpace(value)
+        ? Execution.Failure<string>("Display name is empty", "EMPTY_DISPLAY_NAME")
+        : Execution.Success(value))
+    .Match(value => value, error => $"Failed: {error.Message}");
 ```
 
 ### Logging Integration
@@ -918,9 +937,25 @@ var result = Execution.Failure<string>("Database connection failed",
     errorCode: "DB_001", 
     logLevel: LogLevel.Critical);
 
-// Use logging extensions
-result.LogIfFailed(logger, "Failed to process user request");
+// Use logging extension. Preserved exceptions are passed to ILogger.
+result.Log(logger);
 ```
+
+### ASP.NET Core Mapping
+
+Install optional `FunctionalUseCases.AspNetCore` package to map results without
+adding ASP.NET Core dependencies to core package:
+
+```csharp
+using FunctionalUseCases.AspNetCore;
+
+return result.ToActionResult();
+```
+
+Failures become RFC-style `ProblemDetails`. Numeric HTTP error codes map
+directly; domain codes can provide `Properties["statusCode"]` or a custom
+`ExecutionResultHttpOptions.StatusCodeSelector`. Exception details remain hidden
+unless `IncludeExceptionDetails` is enabled.
 
 ## Example Use Cases
 

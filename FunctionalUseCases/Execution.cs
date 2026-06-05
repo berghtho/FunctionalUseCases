@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using System.Globalization;
 
 namespace FunctionalUseCases;
 
@@ -12,55 +13,106 @@ public static class Execution
         VoidSuccess;
 
     public static ExecutionResult<TResult> Failure<TResult>(IEnumerable<string> messages, int? errorCode = null, LogLevel logLevel = LogLevel.Error) where TResult : notnull =>
-        new(new ExecutionError(messages) { ErrorCode = errorCode, LogLevel = logLevel });
+        Failure<TResult>(messages, ToErrorCode(errorCode), logLevel);
 
     public static ExecutionResult Failure(IEnumerable<string> messages, int? errorCode = null, LogLevel logLevel = LogLevel.Error) =>
-        new(new ExecutionError(messages) { ErrorCode = errorCode, LogLevel = logLevel });
+        Failure(messages, ToErrorCode(errorCode), logLevel);
+
+    public static ExecutionResult<TResult> Failure<TResult>(IEnumerable<string> messages, string? errorCode, LogLevel logLevel = LogLevel.Error, IDictionary<string, object?>? properties = null) where TResult : notnull =>
+        new(new ExecutionError(messages) { ErrorCode = errorCode, LogLevel = logLevel, Properties = CopyProperties(properties) });
+
+    public static ExecutionResult Failure(IEnumerable<string> messages, string? errorCode, LogLevel logLevel = LogLevel.Error, IDictionary<string, object?>? properties = null) =>
+        new(new ExecutionError(messages) { ErrorCode = errorCode, LogLevel = logLevel, Properties = CopyProperties(properties) });
 
     public static ExecutionResult<TResult> Failure<TResult>(Exception exception, LogLevel logLevel = LogLevel.Error, bool suppressPipelineLogging = false) where TResult : notnull =>
-        Failure<TResult>(GetExceptionMessages(exception), logLevel: logLevel);
+        new(new ExecutionError(GetExceptionMessages(exception)) { Exception = exception, LogLevel = logLevel });
 
     public static ExecutionResult<TResult> Failure<TResult>(string message, Exception ex, LogLevel logLevel = LogLevel.Error) where TResult : notnull =>
-        Failure<TResult>(new[] { message }.Concat(GetExceptionMessages(ex)), logLevel: logLevel);
+        new(new ExecutionError(new[] { message }.Concat(GetExceptionMessages(ex))) { Exception = ex, LogLevel = logLevel });
 
     public static ExecutionResult<TResult> Failure<TResult>(string message, int? errorCode = null, LogLevel logLevel = LogLevel.Error) where TResult : notnull =>
         Failure<TResult>(new[] { message }, errorCode, logLevel);
 
-    public static ExecutionResult<TResult> Failure<TResult>(ExecutionResult result, int? errorCode = null,
-        LogLevel logLevel = LogLevel.Error) where TResult : notnull =>
-        Failure<TResult>(result.CheckedError.Messages, result.CheckedError.Logged, errorCode ?? result.CheckedError.ErrorCode, logLevel);
+    public static ExecutionResult<TResult> Failure<TResult>(string message, string errorCode, LogLevel logLevel = LogLevel.Error, IDictionary<string, object?>? properties = null) where TResult : notnull =>
+        Failure<TResult>(new[] { message }, errorCode, logLevel, properties);
 
-    public static ExecutionResult Failure(ExecutionResult result, int? errorCode = null, LogLevel logLevel = LogLevel.Error) =>
-        Failure(result.CheckedError.Messages, result.CheckedError.Logged, errorCode ?? result.CheckedError.ErrorCode, logLevel);
+    public static ExecutionResult<TResult> Failure<TResult>(ExecutionResult result, string? errorCode = null,
+        LogLevel logLevel = LogLevel.Error) where TResult : notnull =>
+        Failure<TResult>(result.CheckedError, errorCode, logLevel);
+
+    public static ExecutionResult Failure(ExecutionResult result, string? errorCode = null, LogLevel logLevel = LogLevel.Error) =>
+        Failure(result.CheckedError, errorCode, logLevel);
 
     public static ExecutionResult Failure(string message, int? errorCode = null, LogLevel logLevel = LogLevel.Error) =>
         Failure(new[] { message }, errorCode, logLevel);
 
+    public static ExecutionResult Failure(string message, string errorCode, LogLevel logLevel = LogLevel.Error, IDictionary<string, object?>? properties = null) =>
+        Failure(new[] { message }, errorCode, logLevel, properties);
+
     public static ExecutionResult Failure(string message, Exception ex, int? errorCode = null, LogLevel logLevel = LogLevel.Error) =>
-        Failure(new[] { message }.Concat(GetExceptionMessages(ex)), errorCode, logLevel);
+        new(new ExecutionError(new[] { message }.Concat(GetExceptionMessages(ex)))
+        {
+            ErrorCode = ToErrorCode(errorCode),
+            Exception = ex,
+            LogLevel = logLevel
+        });
 
     public static ExecutionResult Failure(Exception ex, int? errorCode = null, LogLevel logLevel = LogLevel.Error) =>
-        Failure(GetExceptionMessages(ex).ToArray(), errorCode, logLevel);
+        new(new ExecutionError(GetExceptionMessages(ex))
+        {
+            ErrorCode = ToErrorCode(errorCode),
+            Exception = ex,
+            LogLevel = logLevel
+        });
 
     public static ExecutionResult Combine<T>(params T[] results)
         where T : ExecutionResult =>
         results.All(x => x.ExecutionSucceeded)
             ? Success()
-            : Failure(ConcatMessages(results), ConcatErrorCode(results));
+            : new ExecutionResult(ConcatError(results));
 
-    private static ExecutionResult<T> Failure<T>(IEnumerable<string> messages, bool logged, int? errorCode, LogLevel logLevel) where T : notnull =>
-        new(new ExecutionError(messages) { ErrorCode = errorCode, LogLevel = logLevel, Logged = logged });
+    private static ExecutionResult<T> Failure<T>(ExecutionError error, string? errorCode, LogLevel logLevel) where T : notnull =>
+        new(CopyError(error, errorCode, logLevel));
 
-    private static ExecutionResult Failure(IEnumerable<string> messages, bool logged, int? errorCode, LogLevel logLevel) =>
-        new(new ExecutionError(messages) { ErrorCode = errorCode, LogLevel = logLevel, Logged = logged });
+    private static ExecutionResult Failure(ExecutionError error, string? errorCode, LogLevel logLevel) =>
+        new(CopyError(error, errorCode, logLevel));
 
-    private static int? ConcatErrorCode<T>(params T[] results)
-        where T : ExecutionResult =>
-        results.Select(x => x.Error?.ErrorCode).FirstOrDefault(x => x is not null);
+    private static ExecutionError ConcatError<T>(params T[] results)
+        where T : ExecutionResult
+    {
+        var errors = results.Select(x => x.Error).Where(x => x is not null).Cast<ExecutionError>().ToArray();
+        var properties = errors
+            .SelectMany(x => x.Properties)
+            .GroupBy(x => x.Key, StringComparer.Ordinal)
+            .ToDictionary(x => x.Key, x => x.Last().Value, StringComparer.Ordinal);
 
-    private static List<string> ConcatMessages<T>(params T[] results)
-        where T : ExecutionResult =>
-        results.SelectMany(x => x.Error?.Messages ?? new List<string>()).ToList();
+        return new ExecutionError(errors.SelectMany(x => x.Messages))
+        {
+            ErrorCode = errors.Select(x => x.ErrorCode).FirstOrDefault(x => x is not null),
+            Exception = errors.Select(x => x.Exception).FirstOrDefault(x => x is not null),
+            LogLevel = errors.Select(x => x.LogLevel).DefaultIfEmpty(LogLevel.Error).Max(),
+            Logged = errors.All(x => x.Logged),
+            Properties = properties
+        };
+    }
+
+    private static ExecutionError CopyError(ExecutionError error, string? errorCode, LogLevel logLevel) =>
+        new(error.Messages)
+        {
+            ErrorCode = errorCode ?? error.ErrorCode,
+            Exception = error.Exception,
+            LogLevel = logLevel,
+            Logged = error.Logged,
+            Properties = CopyProperties(error.Properties)
+        };
+
+    private static Dictionary<string, object?> CopyProperties(IDictionary<string, object?>? properties) =>
+        properties is null
+            ? new Dictionary<string, object?>(StringComparer.Ordinal)
+            : new Dictionary<string, object?>(properties, StringComparer.Ordinal);
+
+    private static string? ToErrorCode(int? errorCode) =>
+        errorCode?.ToString(CultureInfo.InvariantCulture);
 
     private static IEnumerable<string> GetExceptionMessages(Exception ex)
     {

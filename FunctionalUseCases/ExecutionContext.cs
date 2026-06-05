@@ -85,111 +85,12 @@ internal class ExecutionContext<TResult> : IExecutionContext<TResult>
 
         try
         {
-            var useCaseParameterType = useCaseParameter.GetType();
-            var useCaseType = typeof(IUseCase<,>).MakeGenericType(useCaseParameterType, typeof(TResult));
-
-            var useCase = _serviceProvider.GetService(useCaseType);
-            if (useCase == null)
-            {
-                return Execution.Failure<TResult>($"No use case registered for parameter type '{useCaseParameterType.Name}'");
-            }
-
-            // Get global execution behaviors
-            var behaviorType = typeof(IExecutionBehavior<,>).MakeGenericType(useCaseParameterType, typeof(TResult));
-            var globalBehaviors = _serviceProvider.GetServices(behaviorType).ToArray();
-
-            // Process per-call behaviors - resolve open generic types and filter for applicable ones
-            var applicablePerCallBehaviors = new List<object>();
-            foreach (var behavior in _perCallBehaviors)
-            {
-                if (behavior is OpenGenericBehaviorDescriptor descriptor)
-                {
-                    // Resolve the open generic type with the current parameter and result types
-                    try
-                    {
-                        var concreteType = descriptor.OpenGenericType.MakeGenericType(useCaseParameterType, typeof(TResult));
-                        var resolvedBehavior = _serviceProvider.GetService(concreteType);
-                        if (resolvedBehavior != null)
-                        {
-                            applicablePerCallBehaviors.Add(resolvedBehavior);
-                        }
-                        else
-                        {
-                            return Execution.Failure<TResult>($"Failed to resolve open generic behavior {descriptor.OpenGenericType.Name}<{useCaseParameterType.Name},{typeof(TResult).Name}>: Service not registered");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        // Log and skip behaviors that can't be resolved
-                        return Execution.Failure<TResult>($"Failed to resolve open generic behavior {descriptor.OpenGenericType.Name}: {ex.Message}", ex);
-                    }
-                }
-                else if (behaviorType.IsInstanceOfType(behavior))
-                {
-                    // Handle concrete behavior instances
-                    applicablePerCallBehaviors.Add(behavior);
-                }
-            }
-
-            // Combine global and per-call behaviors (per-call behaviors run first)
-            var allBehaviors = applicablePerCallBehaviors.Concat(globalBehaviors).ToArray();
-
-            // Build the pipeline by chaining behaviors
-            PipelineBehaviorDelegate<TResult> pipeline = async () =>
-            {
-                var executeMethod = useCaseType.GetMethod("ExecuteAsync");
-                if (executeMethod == null)
-                {
-                    return Execution.Failure<TResult>($"ExecuteAsync method not found on use case for parameter type '{useCaseParameterType.Name}'");
-                }
-
-                // Use reflection to call ExecuteAsync
-                var task = (Task<ExecutionResult<TResult>>?)executeMethod.Invoke(useCase, new object[] { useCaseParameter, cancellationToken });
-                if (task == null)
-                {
-                    return Execution.Failure<TResult>($"ExecuteAsync method returned null for parameter type '{useCaseParameterType.Name}'");
-                }
-
-                return await task.ConfigureAwait(false);
-            };
-
-            // Wrap the pipeline with behaviors in reverse order (so they execute in registration order)
-            for (int i = allBehaviors.Length - 1; i >= 0; i--)
-            {
-                var behavior = allBehaviors[i];
-                var currentPipeline = pipeline;
-
-                // Create a new pipeline that wraps the current one with this behavior
-                pipeline = () =>
-                {
-                    // Check if this is a scoped behavior that needs execution scope
-                    var scopedBehaviorType = typeof(IScopedExecutionBehavior<,>).MakeGenericType(useCaseParameterType, typeof(TResult));
-                    if (scopedBehaviorType.IsInstanceOfType(behavior))
-                    {
-                        var executeMethod = scopedBehaviorType.GetMethod("ExecuteAsync",
-                            new[] { useCaseParameterType, typeof(IExecutionScope), typeof(PipelineBehaviorDelegate<TResult>), typeof(CancellationToken) });
-                        if (executeMethod != null)
-                        {
-                            var task = (Task<ExecutionResult<TResult>>?)executeMethod.Invoke(behavior, new object[] { useCaseParameter, scope, currentPipeline, cancellationToken });
-                            return task ?? currentPipeline();
-                        }
-                    }
-
-                    // Fall back to standard behavior execution
-                    var executeStandardMethod = behaviorType.GetMethod("ExecuteAsync");
-                    if (executeStandardMethod == null)
-                    {
-                        return currentPipeline();
-                    }
-
-                    var standardTask = (Task<ExecutionResult<TResult>>?)executeStandardMethod.Invoke(behavior, new object[] { useCaseParameter, currentPipeline, cancellationToken });
-                    return standardTask ?? currentPipeline();
-                };
-            }
-
-            // Execute the complete pipeline
-            var result = await pipeline().ConfigureAwait(false);
-            return result;
+            return await UseCasePipelineInvoker<TResult>.ExecuteAsync(
+                _serviceProvider,
+                useCaseParameter,
+                _perCallBehaviors,
+                scope,
+                cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

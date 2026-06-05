@@ -67,12 +67,14 @@ public class ExecutionErrorTests
         var error = new ExecutionError("test");
 
         // Act
-        error.ErrorCode = 404;
+        error.ErrorCode = "NOT_FOUND";
         error.LogLevel = LogLevel.Warning;
+        error.Properties["resource"] = "customer";
 
         // Assert
-        error.ErrorCode.ShouldBe(404);
+        error.ErrorCode.ShouldBe("NOT_FOUND");
         error.LogLevel.ShouldBe(LogLevel.Warning);
+        error.Properties["resource"].ShouldBe("customer");
     }
 }
 

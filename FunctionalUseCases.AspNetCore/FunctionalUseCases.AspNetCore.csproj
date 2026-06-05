@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <PackageId>FunctionalUseCases.AspNetCore</PackageId>
+    <Authors>Thomas Berghold-Wieser</Authors>
+    <Description>ASP.NET Core result mapping extensions for FunctionalUseCases.</Description>
+    <PackageProjectUrl>https://github.com/ThomasBergholdWieser/FunctionalUseCases</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/ThomasBergholdWieser/FunctionalUseCases</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageTags>aspnetcore;functional;use-cases;problem-details</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Nerdbank.GitVersioning" Version="3.7.115">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <ProjectReference Include="..\FunctionalUseCases\FunctionalUseCases.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+</Project>

@@ -34,11 +34,13 @@ public class ExecutionResultTests
     public void ExecutionResult_ThrowIfFailed_ShouldThrowWhenFailed()
     {
         // Arrange
-        var result = Execution.Failure("Test error");
+        var originalException = new InvalidOperationException("Original");
+        var result = Execution.Failure("Test error", originalException);
 
         // Act & Assert
         var exception = Should.Throw<ExecutionException>(() => result.ThrowIfFailed());
         exception.Message.ShouldContain("Test error");
+        exception.InnerException.ShouldBeSameAs(originalException);
     }
 
     [Fact]

@@ -36,4 +36,14 @@ public class ExecutionExceptionTests
         // Act & Assert
         exception.ShouldBeAssignableTo<Exception>();
     }
+
+    [Fact]
+    public void ExecutionException_Constructor_ShouldSetInnerException()
+    {
+        var innerException = new InvalidOperationException("Original");
+
+        var exception = new ExecutionException("Wrapped", innerException);
+
+        exception.InnerException.ShouldBeSameAs(innerException);
+    }
 }

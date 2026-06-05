@@ -155,6 +155,25 @@ public class UseCaseDispatcherTests
             .MustHaveHappenedOnceExactly();
     }
 
+    [Fact]
+    public async Task ExecuteAsync_WhenUseCaseThrows_ShouldPreserveOriginalException()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddTransient<IUseCase<ThrowingUseCaseParameter, string>, ThrowingUseCase>();
+        var dispatcher = new UseCaseDispatcher(services.BuildServiceProvider());
+
+        // Act
+        var result = await dispatcher.ExecuteAsync<string>(new ThrowingUseCaseParameter());
+
+        // Assert
+        result.ExecutionFailed.ShouldBeTrue();
+        result.Error!.Exception.ShouldBeOfType<InvalidOperationException>();
+        result.Error.Exception.ShouldNotBeOfType<System.Reflection.TargetInvocationException>();
+        result.Error.Exception.StackTrace.ShouldNotBeNull();
+        result.Error.Exception.StackTrace.ShouldContain(nameof(ThrowingUseCase.ExecuteAsync));
+    }
+
     // Test helper classes
     public class TestUseCaseParameter : IUseCaseParameter<string>
     {
@@ -192,5 +211,17 @@ public class UseCaseDispatcherTests
             }
             return result;
         }
+    }
+
+    public class ThrowingUseCaseParameter : IUseCaseParameter<string>
+    {
+    }
+
+    public class ThrowingUseCase : IUseCase<ThrowingUseCaseParameter, string>
+    {
+        public Task<ExecutionResult<string>> ExecuteAsync(
+            ThrowingUseCaseParameter useCaseParameter,
+            CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("Handler failed");
     }
 }
