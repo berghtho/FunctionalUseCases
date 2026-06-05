@@ -1,4 +1,15 @@
 namespace FunctionalUseCases;
 
 [Serializable]
-public class ExecutionException(string message) : Exception(message);
+public class ExecutionException : Exception
+{
+    public ExecutionException(string message)
+        : base(message)
+    {
+    }
+
+    public ExecutionException(string message, Exception? innerException)
+        : base(message, innerException)
+    {
+    }
+}

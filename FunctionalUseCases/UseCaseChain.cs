@@ -254,7 +254,7 @@ public class UseCaseChain<TResult>
 
                     // Otherwise, return the failure result
                     return Execution.Failure<TResult>(error?.Message ?? "Unknown error in chain execution",
-                        error?.ErrorCode ?? 0, error?.LogLevel ?? LogLevel.Error);
+                        error?.ErrorCode ?? "0", error?.LogLevel ?? LogLevel.Error);
                 }
 
                 currentResult = result;

@@ -38,10 +38,58 @@ public class ExecutionResultGenericTests
     public void ExecutionResult_CheckedValue_ShouldThrowWhenFailed()
     {
         // Arrange
-        var result = Execution.Failure<string>("Test error");
+        var originalException = new InvalidOperationException("Original error");
+        var result = Execution.Failure<string>("Test error", originalException);
 
         // Act & Assert
-        Should.Throw<NullReferenceException>(() => result.CheckedValue);
+        var exception = Should.Throw<ExecutionException>(() => result.CheckedValue);
+        exception.Message.ShouldContain("Test error");
+        exception.InnerException.ShouldBeSameAs(originalException);
+    }
+
+    [Fact]
+    public void ExecutionResult_Match_ShouldHandleSuccessAndFailure()
+    {
+        var success = Execution.Success(21);
+        var failure = Execution.Failure<int>("No value");
+
+        success.Match(value => value * 2, _ => -1).ShouldBe(42);
+        failure.Match(value => value * 2, error => error.Message.Length).ShouldBe(8);
+    }
+
+    [Fact]
+    public void ExecutionResult_Map_ShouldTransformSuccessAndPreserveFailure()
+    {
+        var originalException = new InvalidOperationException("Original");
+        var success = Execution.Success(21);
+        var failure = Execution.Failure<int>("No value", originalException);
+
+        success.Map(value => value * 2).CheckedValue.ShouldBe(42);
+
+        var mappedFailure = failure.Map(value => value * 2);
+        mappedFailure.ExecutionFailed.ShouldBeTrue();
+        mappedFailure.Error!.Exception.ShouldBeSameAs(originalException);
+    }
+
+    [Fact]
+    public void ExecutionResult_Bind_ShouldComposeResults()
+    {
+        var success = Execution.Success(21);
+
+        var result = success.Bind(value => Execution.Success(value * 2));
+
+        result.CheckedValue.ShouldBe(42);
+    }
+
+    [Fact]
+    public void ExecutionResult_GetValueOrThrow_ShouldIncludeCustomMessage()
+    {
+        var result = Execution.Failure<int>("No value");
+
+        var exception = Should.Throw<ExecutionException>(() =>
+            result.GetValueOrThrow("Cannot continue"));
+
+        exception.Message.ShouldBe("Cannot continue: No value");
     }
 
     [Fact]

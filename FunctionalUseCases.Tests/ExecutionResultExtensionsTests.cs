@@ -133,6 +133,19 @@ public class ExecutionResultExtensionsTests
         result.Error!.Logged.ShouldBeTrue();
     }
 
+    [Fact]
+    public void Log_WithException_ShouldPassOriginalExceptionToLogger()
+    {
+        var exception = new InvalidOperationException("Original");
+        var result = Execution.Failure("Failed", exception);
+        var testLogger = new TestLogger();
+
+        result.Log(testLogger);
+
+        testLogger.LoggedMessages.ShouldHaveSingleItem();
+        testLogger.LoggedMessages[0].Exception.ShouldBeSameAs(exception);
+    }
+
     private class TestLogger : ILogger
     {
         public List<LogEntry> LoggedMessages { get; } = new();
@@ -146,7 +159,8 @@ public class ExecutionResultExtensionsTests
             LoggedMessages.Add(new LogEntry
             {
                 LogLevel = logLevel,
-                Message = formatter(state, exception)
+                Message = formatter(state, exception),
+                Exception = exception
             });
         }
 
@@ -154,6 +168,7 @@ public class ExecutionResultExtensionsTests
         {
             public LogLevel LogLevel { get; set; }
             public string Message { get; set; } = string.Empty;
+            public Exception? Exception { get; set; }
         }
     }
 }

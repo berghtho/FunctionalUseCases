@@ -77,7 +77,7 @@ public class ExecutionTests
 
         // Assert
         result.Error.ShouldNotBeNull();
-        result.Error.ErrorCode.ShouldBe(errorCode);
+        result.Error.ErrorCode.ShouldBe("404");
         result.Error.LogLevel.ShouldBe(logLevel);
     }
 
@@ -95,6 +95,7 @@ public class ExecutionTests
         result.ExecutionFailed.ShouldBeTrue();
         result.Error.ShouldNotBeNull();
         result.Error.Message.ShouldContain("Test exception");
+        result.Error.Exception.ShouldBeSameAs(exception);
     }
 
     [Fact]
@@ -111,6 +112,25 @@ public class ExecutionTests
         result.Error.ShouldNotBeNull();
         result.Error.Message.ShouldContain("Custom error");
         result.Error.Message.ShouldContain("Test exception");
+        result.Error.Exception.ShouldBeSameAs(exception);
+    }
+
+    [Fact]
+    public void Execution_Failure_WithStringCodeAndProperties_ShouldSetStructuredMetadata()
+    {
+        // Arrange
+        var properties = new Dictionary<string, object?> { ["customerId"] = 42 };
+
+        // Act
+        var result = Execution.Failure<string>(
+            "Customer missing",
+            "CUSTOMER_NOT_FOUND",
+            properties: properties);
+
+        // Assert
+        result.Error.ShouldNotBeNull();
+        result.Error.ErrorCode.ShouldBe("CUSTOMER_NOT_FOUND");
+        result.Error.Properties["customerId"].ShouldBe(42);
     }
 
     [Fact]

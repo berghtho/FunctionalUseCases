@@ -10,7 +10,36 @@ public record ExecutionResult<T>(ExecutionError? Error = null) : ExecutionResult
 
     public override bool ExecutionFailed => this.Error is not null || this.Value is null;
 
-    public T CheckedValue => this.ExecutionSucceeded ? this.Value! : throw new NullReferenceException();
+    public T CheckedValue => this.GetValueOrThrow();
+
+    public T GetValueOrThrow(string? exceptionMessage = null)
+    {
+        if (this.ExecutionSucceeded)
+        {
+            return this.Value!;
+        }
+
+        throw this.CreateExecutionException(exceptionMessage);
+    }
+
+    public TResult Match<TResult>(
+        Func<T, TResult> onSuccess,
+        Func<ExecutionError, TResult> onFailure) =>
+        this.ExecutionSucceeded
+            ? onSuccess(this.Value!)
+            : onFailure(this.Error ?? new ExecutionError("Unknown Error"));
+
+    public ExecutionResult<TResult> Map<TResult>(Func<T, TResult> map)
+        where TResult : notnull =>
+        this.ExecutionSucceeded
+            ? Execution.Success(map(this.Value!))
+            : Execution.Failure<TResult>(this);
+
+    public ExecutionResult<TResult> Bind<TResult>(Func<T, ExecutionResult<TResult>> bind)
+        where TResult : notnull =>
+        this.ExecutionSucceeded
+            ? bind(this.Value!)
+            : Execution.Failure<TResult>(this);
 
     public static implicit operator ExecutionResult<T>(T value) => new() { Value = value };
 
@@ -41,14 +70,17 @@ public record ExecutionResult(ExecutionError? Error = null)
             return;
         }
 
-        string BuildInternalMessage() =>
-            this.Error is null
-                ? "Unknown Error"
-                : this.Error.Message;
+        throw this.CreateExecutionException(exceptionMessage);
+    }
 
-        throw new ExecutionException(exceptionMessage is null
-            ? BuildInternalMessage()
-            : exceptionMessage + ": " + BuildInternalMessage());
+    protected ExecutionException CreateExecutionException(string? exceptionMessage = null)
+    {
+        var internalMessage = this.Error?.Message ?? "Unknown Error";
+        var message = exceptionMessage is null
+            ? internalMessage
+            : exceptionMessage + ": " + internalMessage;
+
+        return new ExecutionException(message, this.Error?.Exception);
     }
 
     public static ExecutionResult operator +(ExecutionResult left, ExecutionResult right) =>
